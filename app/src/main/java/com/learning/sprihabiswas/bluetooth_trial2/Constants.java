@@ -32,4 +32,9 @@ public interface Constants {
     public static final String DEVICE_NAME = "device_name";
     public static final String TOAST = "toast";
 
+    public static final String EXTRA_DEVICE_ADDRESS = "extra_device_address";
+
+    public static final String ACTION_PAIR = "action_pair";
+    public static final String ACTION_CHAT = "action_chat";
+
 }

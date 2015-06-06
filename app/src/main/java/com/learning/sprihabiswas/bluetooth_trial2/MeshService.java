@@ -2,29 +2,46 @@ package com.learning.sprihabiswas.bluetooth_trial2;
 
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.IInterface;
 import android.os.Message;
+import android.os.Parcel;
+import android.os.RemoteException;
+import android.support.annotation.NonNull;
 import android.util.Log;
 import android.widget.Toast;
 
+import java.io.FileDescriptor;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class MeshService extends Service {
     private List<Device> devices;
     private List<Packet> broadcasts;
-    private int pending=0;
-    private int connectedTo=0;
+    private int continueFrom=0;
     private Device connectedDevice;
 
     private BluetoothChatHelper bluetoothHelper;
+
+    private BluetoothAdapter mBluetoothAdapter = null;
 
     private final Handler mHandler = new Handler() {
         @Override
@@ -37,12 +54,6 @@ public class MeshService extends Service {
                             //setStatus(getString(R.string.title_connected_to, mConnectedDeviceName));
                             //msgList.removeAllViews();
 
-                            while (connectedDevice.queueSize()>0) {
-                                bluetoothHelper.write(connectedDevice.pop());
-                                pending--;
-                            }
-
-                            bluetoothHelper.start();
 
                             break;
                         case BluetoothChatHelper.STATE_CONNECTING:
@@ -79,7 +90,7 @@ public class MeshService extends Service {
 
                     for(Device device : devices){
                         if(!device.getId().equals(connectedDevice.getId()))
-                            pending += (device.sendPacket(pckt)? 1 :0 );
+                            device.sendPacket(pckt);
                     }
                     break;
                 case Constants.MESSAGE_DEVICE_NAME:
@@ -97,6 +108,33 @@ public class MeshService extends Service {
         }
     };
 
+    private final Runnable queuePoller = new Runnable() {
+        @Override
+        public void run() {
+            if(bluetoothHelper.getState() == BluetoothChatHelper.STATE_LISTEN) {
+                int i;
+                for (i=continueFrom; i<devices.size(); i++) {
+                    if (devices.get(i).queueSize() > 0) {
+                        bluetoothHelper.connect(devices.get(i), true);
+                        break;
+                    }
+                }
+
+                continueFrom = (i<devices.size()? i+1 : i) % devices.size();
+            }
+        }
+    };
+
+    private final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
+
+    private final IBinder mBinder = new LocalBinder();
+
+    public class LocalBinder extends Binder {
+        MeshService getService() {
+            // Return this instance of LocalService so clients can call public methods
+            return MeshService.this;
+        }
+    }
 
     public MeshService() {
         devices = new ArrayList<>();
@@ -113,6 +151,15 @@ public class MeshService extends Service {
         filter = new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
         this.registerReceiver(mReceiver, filter);
 
+        executor.scheduleAtFixedRate(queuePoller, 1000, 1500, TimeUnit.MILLISECONDS);
+
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+    }
+
+    public void pairWith(String deviceAddress){
+        Device device = new Device(mBluetoothAdapter.getRemoteDevice(deviceAddress));
+
+        bluetoothHelper.connect(device,true);
     }
 
 
@@ -142,6 +189,18 @@ public class MeshService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        return mBinder;
+    }
+
+    public Device getDevice(BluetoothDevice device) {
+        for(Device d : devices){
+            if(d.btDevice==device){
+                return d;
+            }
+        }
+
+        Device d = new Device(device);
+        devices.add(d);
+        return d;
     }
 }

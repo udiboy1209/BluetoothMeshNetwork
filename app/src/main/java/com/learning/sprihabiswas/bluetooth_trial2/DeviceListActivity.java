@@ -4,9 +4,12 @@ import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
+import android.os.IBinder;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -20,17 +23,10 @@ import android.widget.Toast;
 import java.util.Set;
 
 
-public class DeviceListActivity extends Activity implements View.OnClickListener{
+public class DeviceListActivity extends Activity implements View.OnClickListener, ServiceConnection{
     private static final String TAG = "DeviceListActivity";
 
-    /**
-     * Return Intent extra
-     */
-    public static String EXTRA_DEVICE_ADDRESS = "device_address";
-
-    /**
-     * Member fields
-     */
+    private MeshService mBoundService;
     private BluetoothAdapter mBtAdapter;
 
     private LinearLayout deviceList;
@@ -93,7 +89,7 @@ public class DeviceListActivity extends Activity implements View.OnClickListener
         tv.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,LinearLayout.LayoutParams.WRAP_CONTENT));
 
         tv.setText(device.getName());
-        tv.setTag(device);
+        tv.setTag(device.getAddress());
         tv.setBackgroundResource(R.drawable.device_back);
         tv.setOnClickListener(DeviceListActivity.this);
         deviceList.addView(tv);
@@ -147,11 +143,24 @@ public class DeviceListActivity extends Activity implements View.OnClickListener
 
     @Override
     public void onClick(View v) {
-        Intent intent = new Intent();
-        intent.putExtra(EXTRA_DEVICE_ADDRESS, ((BluetoothDevice)v.getTag()).getAddress());
+        if(mBoundService==null) {
+            Intent bindIntent = new Intent(this, MeshService.class);
 
-        // Set result and finish this Activity
-        setResult(Activity.RESULT_OK, intent);
-        finish();
+            if (!bindService(bindIntent, this, Context.BIND_AUTO_CREATE)) {
+                Toast.makeText(this, "Failed to connect to service", Toast.LENGTH_LONG).show();
+            }
+        } else {
+            mBoundService.pairWith((String)v.getTag());
+        }
+    }
+
+    @Override
+    public void onServiceConnected(ComponentName name, IBinder service) {
+        mBoundService = ((MeshService.LocalBinder)service).getService();
+    }
+
+    @Override
+    public void onServiceDisconnected(ComponentName name) {
+        mBoundService = null;
     }
 }

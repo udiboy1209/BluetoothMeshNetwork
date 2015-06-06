@@ -58,6 +58,7 @@ public class BluetoothChatHelper {
     // Member fields
     private final BluetoothAdapter mAdapter;
     private final Handler mHandler;
+    private MeshService mContext;
     private AcceptThread mSecureAcceptThread;
     private AcceptThread mInsecureAcceptThread;
     private ConnectThread mConnectThread;
@@ -76,7 +77,8 @@ public class BluetoothChatHelper {
      * @param context The UI Activity Context
      * @param handler A Handler to send messages back to the UI Activity
      */
-    public BluetoothChatHelper(Context context, Handler handler) {
+    public BluetoothChatHelper(MeshService context, Handler handler) {
+        mContext=context;
         mAdapter = BluetoothAdapter.getDefaultAdapter();
         mState = STATE_NONE;
         mHandler = handler;
@@ -201,9 +203,7 @@ public class BluetoothChatHelper {
         mConnectedThread = new ConnectedThread(socket, socketType);
         mConnectedThread.start();
 
-
-
-        // Send the name of the connected device back to the UI Activity
+       // Send the name of the connected device back to the UI Activity
         Message msg = mHandler.obtainMessage(Constants.MESSAGE_DEVICE_NAME);
         Bundle bundle = new Bundle();
         bundle.putString(Constants.DEVICE_NAME, device.btDevice.getAddress());
@@ -214,6 +214,8 @@ public class BluetoothChatHelper {
 
         while(device.queueSize()>0)
             mConnectedThread.write(device.pop());
+
+        start();
     }
 
     /**
@@ -346,7 +348,7 @@ public class BluetoothChatHelper {
                             case STATE_LISTEN:
                             case STATE_CONNECTING:
                                 // Situation normal. Start the connected thread.
-                                connected(socket, socket.getRemoteDevice(),
+                                connected(socket, mContext.getDevice(socket.getRemoteDevice()),
                                         mSocketType);
                                 break;
                             case STATE_NONE:
