@@ -2,11 +2,12 @@ package com.learning.sprihabiswas.bluetooth_trial2;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
-import android.os.Handler;
-import android.os.Message;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -17,9 +18,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements ServiceConnection {
 
     private static final String TAG = "BluetoothChat";
+
+    MeshService mBoundService;
 
     private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
     private static final int REQUEST_CONNECT_DEVICE_INSECURE = 2;
@@ -55,6 +58,10 @@ public class MainActivity extends Activity {
         msgList = (LinearLayout) findViewById(R.id.msg_list);
         msgBar = (EditText) findViewById(R.id.message);
         status = (TextView) findViewById(R.id.status);
+
+        Intent i = new Intent(this, MeshService.class);
+
+        bindService(i, this, Context.BIND_AUTO_CREATE);
     }
 
     @Override
@@ -129,10 +136,22 @@ public class MainActivity extends Activity {
     private void sendMessage(String message) {
         // Check that we're actually connected before trying anything
 
+        Packet p = new Packet(message,mBluetoothAdapter.getAddress());
+        mBoundService.broadcastMessage(p);
     }
 
     public void send(View v){
         String message = msgBar.getText().toString();
         sendMessage(message);
+    }
+
+    @Override
+    public void onServiceConnected(ComponentName name, IBinder service) {
+        mBoundService = ((MeshService.LocalBinder)service).getService();
+    }
+
+    @Override
+    public void onServiceDisconnected(ComponentName name) {
+        mBoundService = null;
     }
 }

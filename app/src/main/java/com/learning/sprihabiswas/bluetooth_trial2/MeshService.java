@@ -162,6 +162,12 @@ public class MeshService extends Service {
         bluetoothHelper.connect(device,true);
     }
 
+    public void broadcastMessage(Packet p){
+        for(Device d : devices){
+            d.sendPacket(p);
+        }
+    }
+
 
     /**
      * The BroadcastReceiver that listens for discovered devices and changes the title when
