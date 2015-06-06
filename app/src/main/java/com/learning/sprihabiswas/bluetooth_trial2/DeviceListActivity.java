@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.graphics.Color;
 import android.os.IBinder;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
@@ -54,6 +55,7 @@ public class DeviceListActivity extends Activity implements View.OnClickListener
         Set<BluetoothDevice> pairedDevices = mBtAdapter.getBondedDevices();
 
         for(BluetoothDevice device : pairedDevices){
+            addDevice(1,device);
             Log.d("PairedDevice",device.getName());
         }
 
@@ -75,7 +77,7 @@ public class DeviceListActivity extends Activity implements View.OnClickListener
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 // If it's already paired, skip it, because it's been listed already
                 if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
-                    addDevice(device);
+                    addDevice(0,device);
                 }
                 // When discovery is finished, change the Activity title
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
@@ -84,10 +86,13 @@ public class DeviceListActivity extends Activity implements View.OnClickListener
         }
     };
 
-    private void addDevice(BluetoothDevice device){
+    private void addDevice(int x,BluetoothDevice device){
         TextView tv = new TextView(DeviceListActivity.this);
-        tv.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,LinearLayout.LayoutParams.WRAP_CONTENT));
-
+        tv.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        if(x==1)
+            tv.setTextColor(Color.BLUE);
+        else
+            tv.setTextColor(Color.BLACK);
         tv.setText(device.getName());
         tv.setTag(device.getAddress());
         tv.setBackgroundResource(R.drawable.device_back);
