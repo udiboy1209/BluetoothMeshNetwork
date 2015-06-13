@@ -39,6 +39,12 @@ public class DeviceListActivity extends Activity implements View.OnClickListener
 
         setResult(Activity.RESULT_CANCELED);
 
+        Intent bindIntent = new Intent(this, MeshService.class);
+
+        if (!bindService(bindIntent, this, Context.BIND_AUTO_CREATE)) {
+            Toast.makeText(this, "Failed to connect to service", Toast.LENGTH_LONG).show();
+        }
+
         deviceList=(LinearLayout) findViewById(R.id.device_list);
 
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
@@ -50,14 +56,6 @@ public class DeviceListActivity extends Activity implements View.OnClickListener
 
         // Get the local Bluetooth adapter
         mBtAdapter = BluetoothAdapter.getDefaultAdapter();
-
-        // Get a set of currently paired devices
-        Set<BluetoothDevice> pairedDevices = mBtAdapter.getBondedDevices();
-
-        for(BluetoothDevice device : pairedDevices){
-            addDevice(1,device);
-            Log.d("PairedDevice",device.getName());
-        }
 
     }
 
@@ -98,6 +96,8 @@ public class DeviceListActivity extends Activity implements View.OnClickListener
         tv.setBackgroundResource(R.drawable.device_back);
         tv.setOnClickListener(DeviceListActivity.this);
         deviceList.addView(tv);
+
+        mBoundService.addDevice(device);
     }
 
     @Override
@@ -148,20 +148,22 @@ public class DeviceListActivity extends Activity implements View.OnClickListener
 
     @Override
     public void onClick(View v) {
-        if(mBoundService==null) {
-            Intent bindIntent = new Intent(this, MeshService.class);
 
-            if (!bindService(bindIntent, this, Context.BIND_AUTO_CREATE)) {
-                Toast.makeText(this, "Failed to connect to service", Toast.LENGTH_LONG).show();
-            }
-        } else {
             mBoundService.pairWith((String)v.getTag());
-        }
+
     }
 
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
         mBoundService = ((MeshService.LocalBinder)service).getService();
+
+        // Get a set of currently paired devices
+        Set<BluetoothDevice> pairedDevices = mBtAdapter.getBondedDevices();
+
+        for(BluetoothDevice device : pairedDevices){
+            addDevice(1,device);
+            Log.d("PairedDevice",device.getName());
+        }
     }
 
     @Override

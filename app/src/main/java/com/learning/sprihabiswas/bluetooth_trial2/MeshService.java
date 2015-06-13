@@ -24,6 +24,8 @@ import java.io.FileDescriptor;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -108,25 +110,32 @@ public class MeshService extends Service {
         }
     };
 
-    private final Runnable queuePoller = new Runnable() {
+    private final TimerTask queuePoller = new TimerTask() {
         @Override
         public void run() {
-            if(bluetoothHelper.getState() == BluetoothChatHelper.STATE_LISTEN) {
+            Log.d("Poller","Poller running");
+            if(bluetoothHelper.getState() == BluetoothChatHelper.STATE_LISTEN || bluetoothHelper.getState() == BluetoothChatHelper.STATE_NONE) {
                 int i;
                 for (i=continueFrom; i<devices.size(); i++) {
                     if (devices.get(i).queueSize() > 0) {
+                        Log.d("Poller","Connecting to : "+devices.get(i).btDevice.getName());
+
                         bluetoothHelper.connect(devices.get(i), true);
                         break;
                     }
                 }
 
-                continueFrom = (i<devices.size()? i+1 : i) % devices.size();
+                Log.d("Poller","i: "+i);
+                Log.d("Poller","size: "+devices.size());
+
+
+                if(devices.size()>0)
+                    continueFrom = (i<devices.size()? i+1 : i) % devices.size();
             }
         }
     };
 
-    private final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
-
+    private Timer timer = new Timer("QueuePollThread");
     private final IBinder mBinder = new LocalBinder();
 
     public class LocalBinder extends Binder {
@@ -151,9 +160,11 @@ public class MeshService extends Service {
         filter = new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
         this.registerReceiver(mReceiver, filter);
 
-        executor.scheduleAtFixedRate(queuePoller, 1000, 1500, TimeUnit.MILLISECONDS);
+        timer.scheduleAtFixedRate(queuePoller, 1000, 1500);
 
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+        bluetoothHelper.start();
     }
 
     public void pairWith(String deviceAddress){
@@ -166,6 +177,10 @@ public class MeshService extends Service {
         for(Device d : devices){
             d.sendPacket(p);
         }
+    }
+
+    public void addDevice(BluetoothDevice device){
+        devices.add(new Device(device));
     }
 
 
@@ -200,7 +215,7 @@ public class MeshService extends Service {
 
     public Device getDevice(BluetoothDevice device) {
         for(Device d : devices){
-            if(d.btDevice==device){
+            if(d.btDevice.getAddress().equals(device.getAddress())){
                 return d;
             }
         }

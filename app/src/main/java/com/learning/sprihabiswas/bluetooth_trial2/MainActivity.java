@@ -133,16 +133,10 @@ public class MainActivity extends Activity implements ServiceConnection {
         }
     }
 
-    private void sendMessage(String message) {
-        // Check that we're actually connected before trying anything
-
-        Packet p = new Packet(message,mBluetoothAdapter.getAddress());
-        mBoundService.broadcastMessage(p);
-    }
-
     public void send(View v){
         String message = msgBar.getText().toString();
-        sendMessage(message);
+        Packet p = new Packet(message,mBluetoothAdapter.getAddress());
+        mBoundService.broadcastMessage(p);
     }
 
     @Override
