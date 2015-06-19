@@ -2,38 +2,21 @@ package com.learning.sprihabiswas.bluetooth_trial2;
 
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Binder;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.IInterface;
 import android.os.Message;
-import android.os.Parcel;
-import android.os.RemoteException;
-import android.support.annotation.NonNull;
 import android.util.Log;
-import android.widget.Toast;
 
-import java.io.FileDescriptor;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public class MeshService extends Service {
     private List<Device> devices;
@@ -55,8 +38,6 @@ public class MeshService extends Service {
                         case BluetoothChatHelper.STATE_CONNECTED:
                             //setStatus(getString(R.string.title_connected_to, mConnectedDeviceName));
                             //msgList.removeAllViews();
-
-
                             break;
                         case BluetoothChatHelper.STATE_CONNECTING:
                             //setStatus(R.string.title_connecting);
@@ -89,22 +70,20 @@ public class MeshService extends Service {
                         }
                     }
 
-
                     for(Device device : devices){
                         if(!device.getId().equals(connectedDevice.getId()))
                             device.sendPacket(pckt);
                     }
                     break;
-                case Constants.MESSAGE_DEVICE_NAME:
-                    String addr = msg.getData().getString(Constants.DEVICE_NAME);
+                case Constants.MESSAGE_CONNECTED:
+                    String addr1 = msg.getData().getString(Constants.DEVICE_ADDRESS);
 
-                    for(Device d : devices){
-                        if(d.btDevice.getAddress().equals(addr)) {
-                            connectedDevice = d;
-                            break;
-                        }
-                    }
+                    connectedDevice = getDevice(addr1);
+                    break;
+                case Constants.MESSAGE_CONNECT_FAILED:
+                    //String addr2 = msg.getData().getString(Constants.DEVICE_ADDRESS);
 
+                    //getDevice(addr2).setState(Device.STATE_BUSY);
                     break;
             }
         }
@@ -117,7 +96,7 @@ public class MeshService extends Service {
             if(bluetoothHelper.getState() == BluetoothChatHelper.STATE_LISTEN || bluetoothHelper.getState() == BluetoothChatHelper.STATE_NONE) {
                 int i;
                 for (i=continueFrom; i<devices.size(); i++) {
-                    if (devices.get(i).queueSize() > 0) {
+                    if (devices.get(i).getState()==Device.STATE_IDLE && devices.get(i).queueSize() > 0) {
                         Log.d("Poller","Connecting to : "+devices.get(i).btDevice.getName());
 
                         bluetoothHelper.connect(devices.get(i), true);
@@ -170,7 +149,7 @@ public class MeshService extends Service {
     public void pairWith(String deviceAddress){
         Device device = new Device(mBluetoothAdapter.getRemoteDevice(deviceAddress));
 
-        bluetoothHelper.connect(device,true);
+        bluetoothHelper.connect(device, true);
     }
 
     public void broadcastMessage(Packet p){
@@ -179,8 +158,15 @@ public class MeshService extends Service {
         }
     }
 
-    public void addDevice(BluetoothDevice device){
-        devices.add(new Device(device));
+    public Device addDevice(BluetoothDevice device){
+        for(Device d : devices) {
+            if(d.btDevice.getAddress().equals(device.getAddress())){
+                return d;
+            }
+        }
+        Device d = new Device(device);
+        devices.add(d);
+        return d;
     }
 
 
@@ -220,8 +206,16 @@ public class MeshService extends Service {
             }
         }
 
-        Device d = new Device(device);
-        devices.add(d);
-        return d;
+        return addDevice(device);
+    }
+
+    public Device getDevice(String address) {
+        for (Device d : devices) {
+            if (d.btDevice.getAddress().equals(address)) {
+                return d;
+            }
+        }
+
+        return addDevice(mBluetoothAdapter.getRemoteDevice(address));
     }
 }

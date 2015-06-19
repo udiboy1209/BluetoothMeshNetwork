@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:text="FIND DEVICE"
         android:id="@+id/find_device"
-        android:onClick="discoverDevices"
+        android:onClick="doDiscovery"
         android:layout_alignParentTop="true"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"

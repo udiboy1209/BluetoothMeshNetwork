@@ -6,8 +6,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Device {
+    public static final int STATE_CONNECTED=1;
+    public static final int STATE_IDLE=2;
+    public static final int STATE_BUSY=3;
+    public static final int STATE_OUT_OF_RANGE=4;
+
     BluetoothDevice btDevice;
     private List<Packet> pcktQueue;
+    private int state=STATE_IDLE;
 
     public Device(BluetoothDevice bt){
         btDevice = bt;
@@ -42,5 +48,13 @@ public class Device {
 
     public String getId(){
         return btDevice.getAddress();
+    }
+
+    public void setState(int state) {
+        this.state = state;
+    }
+
+    public int getState() {
+        return state;
     }
 }

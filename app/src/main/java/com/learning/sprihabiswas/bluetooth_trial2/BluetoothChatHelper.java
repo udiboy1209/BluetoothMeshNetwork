@@ -17,12 +17,8 @@
 package com.learning.sprihabiswas.bluetooth_trial2;
 
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -31,8 +27,6 @@ import android.util.Log;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -200,13 +194,13 @@ public class BluetoothChatHelper {
         }
 
         // Start the thread to manage the connection and perform transmissions
-        mConnectedThread = new ConnectedThread(socket, socketType);
+        mConnectedThread = new ConnectedThread(device, socket, socketType);
         mConnectedThread.start();
 
        // Send the name of the connected device back to the UI Activity
-        Message msg = mHandler.obtainMessage(Constants.MESSAGE_DEVICE_NAME);
+        Message msg = mHandler.obtainMessage(Constants.MESSAGE_CONNECTED);
         Bundle bundle = new Bundle();
-        bundle.putString(Constants.DEVICE_NAME, device.btDevice.getAddress());
+        bundle.putString(Constants.DEVICE_ADDRESS, device.btDevice.getAddress());
         msg.setData(bundle);
         mHandler.sendMessage(msg);
 
@@ -269,9 +263,9 @@ public class BluetoothChatHelper {
      */
     private void connectionFailed() {
         // Send a failure message back to the Activity
-        Message msg = mHandler.obtainMessage(Constants.MESSAGE_TOAST);
+        Message msg = mHandler.obtainMessage(Constants.MESSAGE_CONNECT_FAILED);
         Bundle bundle = new Bundle();
-        bundle.putString(Constants.TOAST, "Unable to connect device");
+        //bundle.putString(Constants.DEVICE_ADDRESS, address);
         msg.setData(bundle);
         mHandler.sendMessage(msg);
 
@@ -431,6 +425,7 @@ public class BluetoothChatHelper {
                     Log.e(TAG, "unable to close() " + mSocketType +
                             " socket during connection failure", e2);
                 }
+                mmDevice.setState(Device.STATE_BUSY);
                 connectionFailed();
                 return;
             }
@@ -461,10 +456,12 @@ public class BluetoothChatHelper {
         private final BluetoothSocket mmSocket;
         private final InputStream mmInStream;
         private final OutputStream mmOutStream;
+        private final Device mmDevice;
 
-        public ConnectedThread(BluetoothSocket socket, String socketType) {
+        public ConnectedThread(Device device, BluetoothSocket socket, String socketType) {
             Log.d(TAG, "create ConnectedThread: " + socketType);
             mmSocket = socket;
+            mmDevice=device;
             InputStream tmpIn = null;
             OutputStream tmpOut = null;
 
@@ -496,6 +493,7 @@ public class BluetoothChatHelper {
                             .sendToTarget();
                 } catch (IOException e) {
                     Log.e(TAG, "disconnected", e);
+                    mmDevice.setState(Device.STATE_OUT_OF_RANGE);
                     connectionLost();
                     // Start the service over to restart listening mode
                     BluetoothChatHelper.this.start();
